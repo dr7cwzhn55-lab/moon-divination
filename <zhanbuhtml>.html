@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>月光占卜屋 · 答案之书</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Cormorant Garamond', 'Georgia', 'Noto Serif SC', 'SimSun', serif;
+            background: radial-gradient(ellipse at center, #1a0a2e 0%, #0d0418 60%, #05020a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="%23b78bdb" stroke-width="1.5" stroke-dasharray="3 3"/></svg>') 12 12, auto;
+        }
+        #particlesCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .scene {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .moon-window {
+            position: fixed;
+            top: 5%;
+            right: 8%;
+            width: 120px;
+            height: 180px;
+            border: 2px solid rgba(180, 140, 220, 0.3);
+            border-radius: 12px;
+            background: rgba(25, 10, 45, 0.4);
+            box-shadow: 0 0 80px rgba(140, 100, 200, 0.2), inset 0 0 40px rgba(200, 160, 230, 0.1);
+            z-index: 1;
+            pointer-events: none;
+        }
+        .moonbeam {
+            position: fixed;
+            top: 5%;
+            right: calc(8% + 60px);
+            width: 3px;
+            height: 240px;
+            background: linear-gradient(to bottom, rgba(220, 190, 250, 0.5), transparent);
+            z-index: 0;
+            filter: blur(2px);
+            animation: beamShimmer 6s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes beamShimmer {
+            0%,
+            100% {
+                opacity: 0.4;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        .center-stage {
+            position: relative;
+            width: 420px;
+            height: 540px;
+            pointer-events: none;
+            /* 容器本身不响应点击，但内部交互元素需单独开启 */
+        }
+        /* 椅子 */
+        .chair {
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 160px;
+            height: 240px;
+            filter: drop-shadow(0 0 40px rgba(100, 50, 160, 0.6)) drop-shadow(0 20px 30px rgba(0, 0, 0, 0.8));
+            z-index: 4;
+            pointer-events: none;
+        }
+        .chair-back {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 180px;
+            background: linear-gradient(175deg, #2e1040 0%, #1a0725 30%, #250d35 70%, #14031c 100%);
+            border-radius: 60px 60px 15px 15px;
+            box-shadow: inset 0 5px 20px rgba(180, 120, 220, 0.3), inset 0 -10px 20px rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(130, 80, 180, 0.4);
+        }
+        .chair-seat {
+            position: absolute;
+            bottom: 45px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 130px;
+            height: 40px;
+            background: linear-gradient(180deg, #3a1a50, #1e072d);
+            border-radius: 15px 15px 6px 6px;
+            box-shadow: inset 0 8px 15px rgba(180, 130, 220, 0.2), 0 15px 25px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(120, 70, 160, 0.5);
+        }
+        .leg {
+            position: absolute;
+            bottom: 0;
+            width: 14px;
+            height: 45px;
+            background: linear-gradient(180deg, #2a0f3d, #11021c);
+            border-radius: 4px;
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.6);
+        }
+        .leg-front-left {
+            left: 20px;
+        }
+        .leg-front-right {
+            right: 20px;
+        }
+        .leg-back-left {
+            left: 35px;
+            bottom: 6px;
+            height: 38px;
+            filter: brightness(0.5);
+        }
+        .leg-back-right {
+            right: 35px;
+            bottom: 6px;
+            height: 38px;
+            filter: brightness(0.5);
+        }
+        /* 悬浮塔罗牌 */
+        .cards-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            pointer-events: none;
+            z-index: 3;
+        }
+        .card-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0 0;
+            pointer-events: none;
+        }
+        .wrapper1 {
+            transform: rotate(0deg) translateX(155px);
+        }
+        .wrapper2 {
+            transform: rotate(60deg) translateX(155px);
+        }
+        .wrapper3 {
+            transform: rotate(120deg) translateX(155px);
+        }
+        .wrapper4 {
+            transform: rotate(180deg) translateX(155px);
+        }
+        .wrapper5 {
+            transform: rotate(240deg) translateX(155px);
+        }
+        .wrapper6 {
+            transform: rotate(300deg) translateX(155px);
+        }
+        .card {
+            position: absolute;
+            width: 68px;
+            height: 100px;
+            left: -34px;
+            top: -50px;
+            background: linear-gradient(145deg, #1f0a35 0%, #140320 50%, #1d082e 100%);
+            border-radius: 8px;
+            box-shadow: 0 0 25px rgba(120, 60, 180, 0.6), 0 10px 25px rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(160, 110, 210, 0.5);
+            animation: floatCard 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+        .wrapper2 .card {
+            animation-delay: -1.3s;
+        }
+        .wrapper3 .card {
+            animation-delay: -2.6s;
+        }
+        .wrapper4 .card {
+            animation-delay: -3.9s;
+        }
+        .wrapper5 .card {
+            animation-delay: -5.2s;
+        }
+        .wrapper6 .card {
+            animation-delay: -6.5s;
+        }
+        @keyframes floatCard {
+            0%,
+            100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            33% {
+                transform: translateY(-12px) rotate(2deg);
+            }
+            66% {
+                transform: translateY(6px) rotate(-2deg);
+            }
+        }
+        .mandala {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .mandala::before {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(200, 160, 240, 0.6);
+            box-shadow: 0 0 15px rgba(150, 100, 220, 0.8), inset 0 0 10px rgba(180, 140, 220, 0.4);
+            animation: spin 10s linear infinite;
+        }
+        .mandala::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(220, 190, 250, 0.7);
+            transform: rotate(45deg);
+            box-shadow: 0 0 15px rgba(200, 160, 240, 0.6);
+        }
+        .star-inner {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: rgba(230, 210, 255, 0.8);
+            transform: rotate(22.5deg);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+        }
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        /* 水晶球 */
+        .crystal-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -45%);
+            width: 280px;
+            height: 320px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            filter: blur(20px);
+            transition: all 2s cubic-bezier(0.16, 0.84, 0.44, 1);
+        }
+        .crystal-container.visible {
+            opacity: 1;
+            filter: blur(0);
+            transform: translate(-50%, -50%);
+        }
+        .ball {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.55) 0%, rgba(210, 180, 250, 0.25) 20%, rgba(120, 70, 190, 0.45) 55%, rgba(40, 15, 70, 0.85) 85%);
+            box-shadow: 0 0 100px rgba(180, 120, 240, 0.7), 0 0 200px rgba(120, 60, 200, 0.4), inset 0 0 70px rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(200, 160, 240, 0.6);
+            overflow: hidden;
+        }
+        .mist {
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            top: -25%;
+            left: -25%;
+            background: radial-gradient(ellipse at 40% 40%, rgba(255, 255, 255, 0.25) 0%, transparent 50%), radial-gradient(ellipse at 60% 60%, rgba(200, 160, 240, 0.2) 0%, transparent 50%);
+            filter: blur(15px);
+            animation: mistRotate 12s linear infinite;
+        }
+        .mist2 {
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            top: -10%;
+            left: -10%;
+            background: radial-gradient(ellipse at 30% 70%, rgba(220, 190, 250, 0.2) 0%, transparent 50%), radial-gradient(ellipse at 70% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 40%);
+            filter: blur(20px);
+            animation: mistRotate 8s linear reverse infinite;
+        }
+        @keyframes mistRotate {
+            0% {
+                transform: rotate(0deg) scale(1);
+            }
+            50% {
+                transform: rotate(180deg) scale(1.05);
+            }
+            100% {
+                transform: rotate(360deg) scale(1);
+            }
+        }
+        .sparkle {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 20px white, 0 0 40px rgba(255, 255, 255, 0.8);
+            animation: twinkle 3s infinite ease-in-out alternate;
+        }
+        .sparkle:nth-child(1) {
+            top: 25%;
+            left: 20%;
+            animation-delay: 0s;
+        }
+        .sparkle:nth-child(2) {
+            top: 55%;
+            left: 70%;
+            animation-delay: 1.2s;
+        }
+        .sparkle:nth-child(3) {
+            top: 15%;
+            left: 60%;
+            animation-delay: 2.4s;
+        }
+        .sparkle:nth-child(4) {
+            top: 75%;
+            left: 25%;
+            animation-delay: 0.6s;
+        }
+        .sparkle:nth-child(5) {
+            top: 45%;
+            left: 40%;
+            animation-delay: 1.8s;
+        }
+        @keyframes twinkle {
+            0% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1.8);
+            }
+        }
+        .highlight {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.6) 30%, transparent 70%);
+            border-radius: 50%;
+            top: 30px;
+            left: 35px;
+            filter: blur(3px);
+            animation: highlightPulse 4s infinite ease-in-out;
+        }
+        .highlight2 {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            bottom: 45px;
+            right: 30px;
+            box-shadow: 0 0 30px white;
+            animation: highlightPulse 3s infinite ease-in-out reverse;
+        }
+        @keyframes highlightPulse {
+            0%,
+            100% {
+                opacity: 0.7;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.15);
+            }
+        }
+        .base {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 130px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .base-top {
+            width: 100px;
+            height: 15px;
+            background: linear-gradient(180deg, #8a6bb0, #4a2f6a);
+            border-radius: 50%;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(200, 160, 240, 0.7);
+        }
+        .base-body {
+            width: 120px;
+            height: 30px;
+            background: linear-gradient(180deg, #5b3d7a, #2d1445);
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.7), inset 0 3px 10px rgba(200, 160, 240, 0.25);
+            border: 1px solid rgba(180, 130, 220, 0.6);
+        }
+        .base-foot {
+            width: 140px;
+            height: 15px;
+            background: linear-gradient(180deg, #4a2f6a, #1a0a2e);
+            border-radius: 0 0 50% 50%;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.8), inset 0 2px 5px rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(150, 110, 200, 0.5);
+        }
+        /* 圆桌 */
+        .round-table {
+            position: absolute;
+            top: 65%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px;
+            height: 160px;
+            background: radial-gradient(ellipse at center, #3d2240 0%, #1f0d28 70%);
+            border-radius: 50%;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(120, 60, 180, 0.4);
+            border: 2px solid rgba(160, 110, 200, 0.5);
+            z-index: 15;
+            pointer-events: auto;
+            /* 圆桌需要响应点击 */
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        .round-table.visible {
+            opacity: 1;
+        }
+        .table-item {
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 0 15px rgba(180, 130, 220, 0.6));
+            pointer-events: auto;
+        }
+        .table-item:hover {
+            filter: drop-shadow(0 0 25px rgba(220, 180, 250, 0.9));
+            transform: scale(1.05);
+        }
+        .book-item {
+            left: 30px;
+            top: 50px;
+            width: 70px;
+            height: 90px;
+            background: linear-gradient(135deg, #4e2e5a, #2a1440);
+            border-radius: 8px 20px 20px 8px;
+            box-shadow: inset 0 2px 10px rgba(255, 255, 255, 0.2), 0 0 20px rgba(180, 120, 220, 0.4);
+            border: 1px solid #b78bdb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #c9a96e;
+        }
+        .cards-stack {
+            right: 30px;
+            top: 55px;
+            width: 50px;
+            height: 70px;
+            background: linear-gradient(145deg, #2a1440, #1d0a2e);
+            border-radius: 6px;
+            box-shadow: 0 0 20px rgba(140, 80, 200, 0.6), 0 8px 20px rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(170, 120, 215, 0.5);
+        }
+        /* 答案之书 */
+        #bookSection {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 340px;
+            background: transparent;
+            border: none;
+            z-index: 25;
+            /* 提高层级 */
+            display: none;
+            text-align: center;
+            color: #e8d5ff;
+            pointer-events: auto;
+            /* 关键：让书页可以点击 */
+        }
+        .open-book {
+            width: 100%;
+            height: 240px;
+            background: #f4e4c1;
+            border-radius: 10px 30px 30px 10px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            margin: 0 auto;
+            overflow: hidden;
+            border: 3px solid #8b5e3c;
+            pointer-events: auto;
+        }
+        .page-left,
+        .page-right {
+            width: 50%;
+            height: 100%;
+            background: #fdf3d0;
+            position: relative;
+            padding: 15px;
+            box-shadow: inset -2px 0 5px rgba(0, 0, 0, 0.15);
+            font-family: 'KaiTi', 'STKaiti', 'Georgia', serif;
+            color: #3e2a1e;
+            pointer-events: auto;
+        }
+        .page-left {
+            border-right: 1px solid #c9a87c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .page-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.5s ease;
+            pointer-events: auto;
+        }
+        .flipping {
+            animation: flipPage 1.5s ease-in-out;
+        }
+        @keyframes flipPage {
+            0% {
+                transform: rotateY(0deg);
+            }
+            50% {
+                transform: rotateY(-20deg);
+            }
+            100% {
+                transform: rotateY(0deg);
+            }
+        }
+        .answer-text {
+            font-size: 24px;
+            font-style: italic;
+            margin: 10px 0;
+            color: #4a2c1a;
+        }
+        .suggestion-text {
+            font-size: 14px;
+            margin-top: 8px;
+            color: #5e3a28;
+            min-height: 40px;
+        }
+        .limit-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            visibility: hidden;
+            pointer-events: auto;
+        }
+        .limit-popup.active {
+            visibility: visible;
+        }
+        .popup-content {
+            background: #2a1440;
+            border: 2px solid #b78bdb;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            color: #e8d5ff;
+            width: 280px;
+            pointer-events: auto;
+        }
+        .ad-btn {
+            background: #5b2d8e;
+            border: none;
+            color: white;
+            padding: 10px 25px;
+            border-radius: 20px;
+            margin: 10px;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        #tarotSection {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            background: rgba(20, 8, 30, 0.9);
+            border: 2px solid #b78bdb;
+            border-radius: 20px;
+            padding: 20px;
+            z-index: 25;
+            display: none;
+            text-align: center;
+            color: #e8d5ff;
+            box-shadow: 0 0 50px rgba(150, 100, 220, 0.5);
+            pointer-events: auto;
+        }
+        .return-btn {
+            margin-top: 15px;
+            background: transparent;
+            border: 1px solid #b78bdb;
+            color: #e8d5ff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+            pointer-events: auto;
+        }
+        .return-btn:hover {
+            background: #5b3a7a;
+        }
+        .subtitle {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 22px;
+            letter-spacing: 4px;
+            color: #e8ddf5;
+            white-space: nowrap;
+            z-index: 25;
+            opacity: 0;
+            transition: opacity 1s;
+            text-shadow: 0 0 15px rgba(200, 160, 240, 0.7);
+            pointer-events: none;
+        }
+        .footer-note {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: rgba(180, 150, 210, 0.5);
+            z-index: 20;
+            pointer-events: none;
+        }
+        .mute-toggle {
+            position: fixed;
+            top: 25px;
+            right: 25px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(20, 8, 35, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(180, 140, 210, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: #e0d0f0;
+            cursor: pointer;
+            z-index: 50;
+            box-shadow: 0 0 25px rgba(140, 100, 200, 0.5);
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particlesCanvas"></canvas>
+    <div class="moon-window"></div>
+    <div class="moonbeam"></div>
+
+    <div class="scene">
+        <div class="center-stage" id="centerStage">
+            <div class="chair">
+                <div class="chair-back"></div>
+                <div class="chair-seat"></div>
+                <div class="leg leg-front-left"></div>
+                <div class="leg leg-front-right"></div>
+                <div class="leg leg-back-left"></div>
+                <div class="leg leg-back-right"></div>
+            </div>
+
+            <div class="cards-container">
+                <div class="card-wrapper wrapper1"><div class="card"><div class="mandala"><div class="star-inner"></div></div></div></div>
+                <div class="card-wrapper wrapper2"><div class="card"><div class="mandala"><div class="star-inner"></div></div></div></div>
+                <div class="card-wrapper wrapper3"><div class="card"><div class="mandala"><div class="star-inner"></div></div></div></div>
+                <div class="card-wrapper wrapper4"><div class="card"><div class="mandala"><div class="star-inner"></div></div></div></div>
+                <div class="card-wrapper wrapper5"><div class="card"><div class="mandala"><div class="star-inner"></div></div></div></div>
+                <div class="card-wrapper wrapper6"><div class="card"><div class="mandala"><div class="star-inner"></div></div></div></div>
+            </div>
+
+            <div class="crystal-container" id="crystalContainer">
+                <div class="ball">
+                    <div class="mist"></div>
+                    <div class="mist2"></div>
+                    <div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div>
+                    <div class="highlight"></div><div class="highlight2"></div>
+                </div>
+                <div class="base">
+                    <div class="base-top"></div>
+                    <div class="base-body"></div>
+                    <div class="base-foot"></div>
+                </div>
+                <div class="subtitle" id="subtitle">你来啦？</div>
+            </div>
+
+            <div class="round-table" id="roundTable">
+                <div class="table-item book-item" id="bookItem">📖</div>
+                <div class="table-item cards-stack" id="cardsStack"></div>
+                <div class="subtitle" id="guideSubtitle" style="top:-40px; font-size:18px;"></div>
+            </div>
+
+            <div id="bookSection">
+                <div class="open-book">
+                    <div class="page-left" id="pageLeft">默念你的问题<br>触碰书页</div>
+                    <div class="page-right" id="pageRight"></div>
+                </div>
+                <button class="return-btn" id="backFromBook" style="margin-top:15px;">← 返回圆桌</button>
+            </div>
+
+            <div id="tarotSection">
+                <h3>🃏 塔罗占卜</h3>
+                <p style="margin:20px 0;">✨ 集中精神，选择一张牌</p>
+                <button class="return-btn" id="backFromTarot">← 返回圆桌</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-note">本体验仅供娱乐 · 命运在此低语</div>
+    <div class="mute-toggle" id="muteBtn">🌙</div>
+
+    <div class="limit-popup" id="limitPopup">
+        <div class="popup-content">
+            <p>🌙 今日的微光已用完</p>
+            <button class="ad-btn" id="adBtn">看一段微风，获得5次</button>
+            <p style="margin-top:15px; font-size:12px;">或 成为秘月会员，无限翻阅</p>
+            <button class="return-btn" id="closeLimitPopup" style="margin-top:10px;">关闭</button>
+        </div>
+    </div>
+
+    <audio id="bgMusic" loop preload="auto"></audio>
+    <audio id="chimeSound" preload="auto"></audio>
+    <audio id="stepSound" preload="auto"></audio>
+    <audio id="pageFlipSound" preload="auto"></audio>
+
+    <script>
+        (() => {
+            const canvas = document.getElementById('particlesCanvas');
+            const ctx = canvas.getContext('2d');
+            let w, h;
+            const particles = [];
+            for (let i = 0; i < 35; i++) {
+                particles.push({
+                    x: Math.random() * innerWidth,
+                    y: Math.random() * innerHeight,
+                    r: Math.random() * 2.5 + 0.5,
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: (Math.random() - 0.5) * 0.3 - 0.15,
+                    a: Math.random() * 0.6 + 0.2,
+                    da: (Math.random() - 0.5) * 0.005
+                });
+            }
+
+            function resize() {
+                w = innerWidth;
+                h = innerHeight;
+                canvas.width = w;
+                canvas.height = h;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            function draw() {
+                ctx.clearRect(0, 0, w, h);
+                for (let p of particles) {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.a += p.da;
+                    if (p.a <= 0.1 || p.a >= 0.8) p.da *= -1;
+                    if (p.x < -10) p.x = w + 10;
+                    if (p.x > w + 10) p.x = -10;
+                    if (p.y < -10) p.y = h + 10;
+                    if (p.y > h + 10) p.y = -10;
+                    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3);
+                    g.addColorStop(0, `rgba(210,185,245,${p.a})`);
+                    g.addColorStop(0.6, `rgba(160,130,210,${p.a * 0.4})`);
+                    g.addColorStop(1, 'rgba(100,60,150,0)');
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r * 0.8, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255,245,255,${p.a + 0.2})`;
+                    ctx.fill();
+                }
+                requestAnimationFrame(draw);
+            }
+            draw();
+
+            const crystal = document.getElementById('crystalContainer');
+            const subtitle = document.getElementById('subtitle');
+            const roundTable = document.getElementById('roundTable');
+            const guideSub = document.getElementById('guideSubtitle');
+            const bookSec = document.getElementById('bookSection');
+            const tarotSec = document.getElementById('tarotSection');
+            const muteBtn = document.getElementById('muteBtn');
+            const pageFlipSound = document.getElementById('pageFlipSound');
+            const pageLeft = document.getElementById('pageLeft');
+            const pageRight = document.getElementById('pageRight');
+            const limitPopup = document.getElementById('limitPopup');
+
+            const answers = [
+                '现在还不是时候', '跟随你的直觉', '它会到来，在你不经意时', '暂停脚步',
+                '答案就在你心中', '放手吧', '相信过程', '保持耐心',
+                '时机尚未成熟', '勇敢前行', '回头看看', '换个角度',
+                '接受未知', '宇宙正在安排', '你已经知道了', '别犹豫',
+                '放下恐惧', '倾听内心的声音', '探索新的可能', '坚持一下',
+                '给自己时间', '相信宇宙的安排', '保持开放', '期待惊喜',
+                '不要强求', '温柔对待自己', '让它自然发生', '相信奇迹',
+                '专注当下', '生命会找到出路'
+            ];
+            const suggestions = [
+                '有时候停顿不是退缩，是让灵魂赶上身体。',
+                '直觉是你最古老的眼睛，它看见理智看不到的路。',
+                '等待并非虚无，种子在黑暗中积蓄力量。',
+                '答案不是终点，而是你与自己的对话。',
+                '放下控制，才能接住命运递来的礼物。',
+                '信任如同月光，虽不炙热，却能照亮夜路。',
+                '耐心是一种温柔的勇气，它让花朵按自己的时间绽放。',
+                '有时问题本身比答案更重要，它引导你向内探寻。',
+                '未知并不可怕，它是尚未拆封的命运之礼。',
+                '宇宙不会给出你无法承受的答案，它总在合适的时候显现。',
+                '你早已拥有钥匙，只是忘记了口袋。',
+                '倾听寂静，那里藏着最响亮的声音。',
+                '每一条路都通往星辰，即使此刻云雾弥漫。',
+                '改变视角，世界便焕然一新。',
+                '允许自己迷茫，迷雾中往往藏着新的起点。',
+                '不要为了赶路而错过路边的萤火虫。',
+                '真正的力量来自柔软的接纳，而非强硬的对抗。',
+                '今天种下的疑问，会在明日开出智慧之花。',
+                '深呼吸，你比想象中更靠近答案。',
+                '万物皆有裂痕，那是光照进来的地方。',
+                '与其寻找答案，不如成为答案本身。',
+                '生命不是谜题，而是一首等待谱写的诗。',
+                '保持好奇心，它会带你穿越困惑的森林。'
+            ];
+
+            function getUserLevel() { return 0; }
+
+            function getTodayKey() {
+                const d = new Date();
+                return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+            }
+
+            function getUsageData() {
+                const raw = localStorage.getItem('answerBookUsage');
+                if (!raw) return { date: getTodayKey(), count: 0 };
+                try {
+                    const data = JSON.parse(raw);
+                    if (data.date !== getTodayKey()) return { date: getTodayKey(), count: 0 };
+                    return data;
+                } catch (e) { return { date: getTodayKey(), count: 0 }; }
+            }
+
+            function saveUsageData(data) { localStorage.setItem('answerBookUsage', JSON.stringify(data)); }
+
+            function getDailyLimit() {
+                const level = getUserLevel();
+                if (level === 2) return Infinity;
+                if (level === 1) return 5;
+                return 1;
+            }
+
+            function canUseBook() {
+                const limit = getDailyLimit();
+                if (limit === Infinity) return true;
+                return getUsageData().count < limit;
+            }
+
+            function useBookOnce() {
+                const usage = getUsageData();
+                usage.count += 1;
+                saveUsageData(usage);
+            }
+
+            function addFreeUses(amount) {
+                const usage = getUsageData();
+                usage.count = Math.max(0, usage.count - amount);
+                saveUsageData(usage);
+            }
+
+            function resetBookPages() {
+                pageLeft.innerHTML = '默念你的问题<br>触碰书页';
+                pageRight.innerHTML = '';
+                pageRight.classList.remove('flipping');
+            }
+
+            pageLeft.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!canUseBook()) {
+                    limitPopup.classList.add('active');
+                    return;
+                }
+                if (pageRight.classList.contains('flipping')) return;
+                if (pageFlipSound.src) {
+                    pageFlipSound.currentTime = 0;
+                    pageFlipSound.play().catch(() => {});
+                }
+                pageRight.classList.add('flipping');
+                pageLeft.innerHTML = '...';
+                useBookOnce();
+                setTimeout(() => {
+                    pageRight.classList.remove('flipping');
+                    const ans = answers[Math.floor(Math.random() * answers.length)];
+                    const sug = suggestions[Math.floor(Math.random() * suggestions.length)];
+                    pageRight.innerHTML =
+                        `<div class="answer-text">${ans}</div><div class="suggestion-text" id="suggestionText"></div>`;
+                    const sugEl = document.getElementById('suggestionText');
+                    let idx = 0;
+
+                    function typeWriter() {
+                        if (idx < sug.length) {
+                            sugEl.textContent += sug.charAt(idx);
+                            idx++;
+                            setTimeout(typeWriter, 50);
+                        }
+                    }
+                    typeWriter();
+                }, 1500);
+            });
+
+            let muted = false;
+            muteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                muted = !muted;
+                document.getElementById('bgMusic').muted = muted;
+                document.getElementById('chimeSound').muted = muted;
+                document.getElementById('stepSound').muted = muted;
+                pageFlipSound.muted = muted;
+                muteBtn.innerHTML = muted ? '🌑' : '🌙';
+            });
+
+            let state = 'waiting';
+
+            function showCrystal() {
+                if (state !== 'waiting') return;
+                state = 'crystalShown';
+                crystal.classList.add('visible');
+                setTimeout(() => {
+                    subtitle.style.opacity = '1';
+                    if (document.getElementById('chimeSound').src) {
+                        document.getElementById('chimeSound').play().catch(() => {});
+                    }
+                }, 1800);
+            }
+
+            function showRoundTable() {
+                if (state !== 'crystalShown') return;
+                state = 'roundTable';
+                roundTable.classList.add('visible');
+                crystal.classList.remove('visible');
+                subtitle.style.opacity = '0';
+                const phrases = [
+                    '要翻翻答案之书，还是让我为你抽张牌？',
+                    '书页或牌面，命运由你选择。',
+                    '古老的智慧在等待你的触碰。'
+                ];
+                guideSub.textContent = phrases[Math.floor(Math.random() * phrases.length)];
+                guideSub.style.opacity = '1';
+            }
+
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('#muteBtn') || e.target.closest('.return-btn') ||
+                    e.target.closest('#pageLeft') || e.target.closest('#adBtn') ||
+                    e.target.closest('#closeLimitPopup') || e.target.closest('.table-item')) return;
+                if (state === 'waiting') showCrystal();
+                else if (state === 'crystalShown') showRoundTable();
+            });
+
+            document.getElementById('bookItem').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (state !== 'roundTable') return;
+                state = 'book';
+                resetBookPages();
+                roundTable.classList.remove('visible');
+                guideSub.style.opacity = '0';
+                bookSec.style.display = 'block';
+            });
+            document.getElementById('cardsStack').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (state !== 'roundTable') return;
+                state = 'tarot';
+                roundTable.classList.remove('visible');
+                guideSub.style.opacity = '0';
+                tarotSec.style.display = 'block';
+            });
+            document.getElementById('backFromBook').addEventListener('click', (e) => {
+                e.stopPropagation();
+                state = 'roundTable';
+                bookSec.style.display = 'none';
+                roundTable.classList.add('visible');
+                guideSub.style.opacity = '1';
+                resetBookPages();
+            });
+            document.getElementById('backFromTarot').addEventListener('click', (e) => {
+                e.stopPropagation();
+                state = 'roundTable';
+                tarotSec.style.display = 'none';
+                roundTable.classList.add('visible');
+                guideSub.style.opacity = '1';
+            });
+
+            document.getElementById('adBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                limitPopup.classList.remove('active');
+                let seconds = 30;
+                const adPopup = document.createElement('div');
+                adPopup.style.cssText =
+                    'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:200;pointer-events:auto;';
+                adPopup.innerHTML =
+                    `<div style="background:#2a1440;padding:30px;border-radius:20px;text-align:center;color:#e8d5ff;pointer-events:auto;"><p>🌿 微风吹过，稍等片刻...</p><h2 id="adTimer">${seconds}</h2></div>`;
+                document.body.appendChild(adPopup);
+                const timerEl = adPopup.querySelector('#adTimer');
+                const interval = setInterval(() => {
+                    seconds--;
+                    timerEl.textContent = seconds;
+                    if (seconds <= 0) {
+                        clearInterval(interval);
+                        document.body.removeChild(adPopup);
+                        addFreeUses(5);
+                        alert('✨ 微风为你带来了5次翻阅机会。');
+                    }
+                }, 1000);
+            });
+            document.getElementById('closeLimitPopup').addEventListener('click', (e) => {
+                e.stopPropagation();
+                limitPopup.classList.remove('active');
+            });
+
+            document.body.addEventListener('click', function initAudio() {
+                const bg = document.getElementById('bgMusic');
+                if (bg.src && bg.paused && !muted) bg.play().catch(() => {});
+            }, { once: true });
+        })();
+    </script>
+</body>
+</html>
